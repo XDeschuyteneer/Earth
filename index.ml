@@ -25,13 +25,14 @@ let get_context canvas =
   canvas##getContext (Dom_html._2d_);;
 
 
-let rec loop renderer scene camera mesh cloud_mesh stars_mesh () =
+let rec loop renderer scene camera current_mesh cloud_mesh stars_mesh () =
   begin
+    debug "render loop";
     renderer##render(scene, camera);
-    mesh##rotation##y <- mesh##rotation##y +. (1. /. 100.);
+    !(current_mesh)##rotation##y <- !(current_mesh)##rotation##y +. (1. /. 100.);
     cloud_mesh##rotation##y <- cloud_mesh##rotation##y +. (1. /. 100.);
     stars_mesh##rotation##y <- stars_mesh##rotation##y +. (1. /. 15000.);
-    Dom_html._requestAnimationFrame (Js.wrap_callback (loop renderer scene camera mesh cloud_mesh stars_mesh));
+    Dom_html._requestAnimationFrame (Js.wrap_callback (loop renderer scene camera current_mesh cloud_mesh stars_mesh));
   end;;
 
 let create_scene () =
@@ -43,7 +44,7 @@ let get_button id =
 
 let set_button_click_event button f =
   button##onclick <-
-    Html.handler
+    Dom_html.handler
       (fun ev ->
        begin
          f ();
@@ -148,12 +149,17 @@ let create_color color =
   Dom_html.window##onload <- Dom.handler (fun _ ->
                                           begin
                                             debug "ocaml START";
+                                            let earth_geometry = create_sphere 0.5 32 32 in
+                                            let jupiter_material = create_material () in
+                                            jupiter_material##map <-
+                                              load_texture
+                                                "textures/jupiter2_1k.jpg";
+                                            let jupiter_mesh = create_mesh earth_geometry jupiter_material in
                                             let earth_button = get_button "earth_button" in
                                             let jupiter_button = get_button "jupiter_button" in
                                             let renderer = create_renderer () in
                                             let camera = create_camera () in
                                             let scene = create_scene () in
-                                            let earth_geometry = create_sphere 0.5 32 32 in
                                             let earth_material = create_material () in
                                             let earth_mesh = create_mesh earth_geometry earth_material in
                                             let cloud_geometry = create_sphere 0.51 32 32 in
@@ -178,25 +184,32 @@ let create_color color =
                                             earth_material##specularMap <- load_texture
                                                                              "textures/earthspec1k.jpg";
                                             earth_material##specular <- create_color "gray";
+                                            let current_mesh = ref jupiter_mesh in
                                             renderer##alpha <- Js._true;
                                             renderer##setClearColor(0xffffff, 1);
-                                            scene##add(earth_mesh);
+                                            scene##add(!current_mesh);
                                             scene##add(stars_mesh);
                                             scene##add(ambiant_light);
                                             scene##add(directional_light);
                                             (* button handling *)
                                             set_button_click_event earth_button (fun () ->
                                                                                  begin
-                                                                                   debug "earth_button"
+                                                                                   scene##remove(jupiter_mesh);
+                                                                                   scene##add(earth_mesh);
+                                                                                   current_mesh := earth_mesh;
+                                                                                   Js._true;
                                                                                  end);
                                             set_button_click_event jupiter_button (fun () ->
                                                                                  begin
-                                                                                   debug "jupiter_button"
+                                                                                   scene##remove(earth_mesh);
+                                                                                   scene##add(jupiter_mesh);
+                                                                                   current_mesh := jupiter_mesh;
+                                                                                   Js._true;
                                                                                  end);
                                             debug "ocaml END";
                                             (* loop running *)
                                             Dom_html._requestAnimationFrame
                                               (Js.wrap_callback
-                                                 (loop renderer scene camera earth_mesh cloud_mesh stars_mesh));
+                                                 (loop renderer scene camera current_mesh cloud_mesh stars_mesh));
                                             Js._true
                                           end);;
