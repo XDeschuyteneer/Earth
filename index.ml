@@ -38,6 +38,18 @@ let create_scene () =
   Js.Unsafe.new_obj (Js.Unsafe.variable "THREE.Scene")
                     [||];;
 
+let get_button id =
+  by_id_coerce id Dom_html.CoerceTo.button;;
+
+let set_button_click_event button f =
+  button##onclick <-
+    Html.handler
+      (fun ev ->
+       begin
+         f ();
+         Js._true;
+       end);;
+
 let create_renderer () =
   let h = Js.Unsafe.variable "screen.width"
   and w = Js.Unsafe.variable "screen.height" in
@@ -136,6 +148,8 @@ let create_color color =
   Dom_html.window##onload <- Dom.handler (fun _ ->
                                           begin
                                             debug "ocaml START";
+                                            let earth_button = get_button "earth_button" in
+                                            let jupiter_button = get_button "jupiter_button" in
                                             let renderer = create_renderer () in
                                             let camera = create_camera () in
                                             let scene = create_scene () in
@@ -153,6 +167,7 @@ let create_color color =
                                             let directional_light = create_directional_light
                                                                       (Js.Unsafe.inject 0xffffff)
                                                                       (Js.Unsafe.inject 1) in
+                                            (* drawing parameters *)
                                             move_light directional_light 5 5 5;
                                             earth_mesh##add(cloud_mesh);
                                             earth_material##map <- load_texture
@@ -169,7 +184,17 @@ let create_color color =
                                             scene##add(stars_mesh);
                                             scene##add(ambiant_light);
                                             scene##add(directional_light);
+                                            (* button handling *)
+                                            set_button_click_event earth_button (fun () ->
+                                                                                 begin
+                                                                                   debug "earth_button"
+                                                                                 end);
+                                            set_button_click_event jupiter_button (fun () ->
+                                                                                 begin
+                                                                                   debug "jupiter_button"
+                                                                                 end);
                                             debug "ocaml END";
+                                            (* loop running *)
                                             Dom_html._requestAnimationFrame
                                               (Js.wrap_callback
                                                  (loop renderer scene camera earth_mesh cloud_mesh stars_mesh));
