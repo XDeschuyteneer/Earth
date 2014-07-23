@@ -1,29 +1,6 @@
-let pi = 4.0 *. atan 1.0;;
-
-let deg_of_rad teta = teta *. (200. /. pi);;
-let rad_of_deg teta = teta *. (pi /. 200.);;
-
-let error f = Printf.ksprintf (fun s -> Firebug.console##error (Js.string s); failwith s) f
-let debug f = Printf.ksprintf (fun s -> Firebug.console##log(Js.string s)) f
-let alert f = Printf.ksprintf (fun s -> Dom_html.window##alert(Js.string s); failwith s) f
-
-let by_id_coerce s f  =
-  Js.Opt.get
-    (f (Dom_html.getElementById s))
-    (fun () -> raise Not_found);;
-
-let get_input id =
-  by_id_coerce id Dom_html.CoerceTo.input;;
-
-let get_button id =
-  by_id_coerce id Dom_html.CoerceTo.button;;
-
-let create_color r g b =
-  CSS.Color.string_of_t (CSS.Color.rgb r g b);;
-
-let get_context canvas =
-  canvas##getContext (Dom_html._2d_);;
-
+open Trigonometry
+open Logs
+open Html_helpers
 
 let rec loop renderer scene camera current_mesh cloud_mesh stars_mesh () =
   begin
@@ -39,18 +16,6 @@ let create_scene () =
   Js.Unsafe.new_obj (Js.Unsafe.variable "THREE.Scene")
                     [||];;
 
-let get_button id =
-  by_id_coerce id Dom_html.CoerceTo.button;;
-
-let set_button_click_event button f =
-  button##onclick <-
-    Dom_html.handler
-      (fun ev ->
-       begin
-         f ();
-         Js._true;
-       end);;
-
 let create_renderer () =
   let h = Js.Unsafe.variable "screen.width"
   and w = Js.Unsafe.variable "screen.height" in
@@ -64,11 +29,6 @@ let create_renderer () =
     renderer
   end;;
 
-let create_object name params =
-  Js.Unsafe.new_obj (Js.Unsafe.variable name) params;;
-
-let get_variable name =
-  Js.Unsafe.variable name;;
 
 let create_camera () =
   let w = float (Js.Unsafe.variable "screen.width")
@@ -148,21 +108,21 @@ let create_color color =
 
   Dom_html.window##onload <- Dom.handler (fun _ ->
                                           begin
-                                            debug "ocaml START";
-                                            let earth_geometry = create_sphere 0.5 32 32 in
-                                            let jupiter_material = create_material () in
-                                            jupiter_material##map <-
-                                              load_texture
-                                                "textures/jupiter2_1k.jpg";
-                                            let jupiter_mesh = create_mesh earth_geometry jupiter_material in
                                             let earth_button = get_button "earth_button" in
                                             let jupiter_button = get_button "jupiter_button" in
                                             let renderer = create_renderer () in
                                             let camera = create_camera () in
                                             let scene = create_scene () in
+                                            let jupiter_geometry = create_sphere 0.8 32 32 in
+                                            let jupiter_material = create_material () in
+                                            jupiter_material##map <-
+                                              load_texture
+                                                "textures/jupiter2_1k.jpg";
+                                            let jupiter_mesh = create_mesh jupiter_geometry jupiter_material in
+                                            let earth_geometry = create_sphere 0.08 32 32 in
                                             let earth_material = create_material () in
                                             let earth_mesh = create_mesh earth_geometry earth_material in
-                                            let cloud_geometry = create_sphere 0.51 32 32 in
+                                            let cloud_geometry = create_sphere 0.081 32 32 in
                                             let cloud_material = create_cloud_material () in
                                             let cloud_mesh = create_mesh cloud_geometry cloud_material in
                                             let stars_geometry = create_sphere 2 32 32 in
@@ -175,7 +135,7 @@ let create_color color =
                                                                       (Js.Unsafe.inject 1) in
                                             (* drawing parameters *)
                                             move_light directional_light 5 5 5;
-                                            earth_mesh##add(cloud_mesh);
+                                            (* earth_mesh##add(cloud_mesh); *)
                                             earth_material##map <- load_texture
                                                                      "textures/earthmap1k.jpg";
                                             earth_material##bumpMap <- load_texture
@@ -206,7 +166,6 @@ let create_color color =
                                                                                    current_mesh := jupiter_mesh;
                                                                                    Js._true;
                                                                                  end);
-                                            debug "ocaml END";
                                             (* loop running *)
                                             Dom_html._requestAnimationFrame
                                               (Js.wrap_callback
